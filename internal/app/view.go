@@ -10,11 +10,22 @@ import (
 	nwv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	"github.com/fatih/color"
+
 	eval "github.com/cheriot/netpoltool/internal/app/netpoleval"
 	"github.com/cheriot/netpoltool/internal/util"
 )
 
+var (
+	red   = color.New(color.FgRed).SprintfFunc()
+	green = color.New(color.FgGreen).SprintfFunc()
+)
+
+type ColorPalette struct {
+}
+
 func RenderCheckAccess(w io.Writer, portResults []eval.PortResult, dest *eval.ConnectionSide) error {
+	color.New(color.FgRed).SprintfFunc()
 	if len(portResults) == 0 {
 		fmt.Printf("No ports found on %s %s.\n", dest.Namespace.Name, dest.Pod.Name)
 	}
@@ -52,9 +63,9 @@ func renderNetpolResults(w io.Writer, prefix string, nprs []eval.NetpolResult) {
 
 func renderAllowSymbol(isAllowed bool) string {
 	if isAllowed {
-		return "✓"
+		return green("✓")
 	}
-	return "✗"
+	return red("✗")
 }
 func renderAllow(isAllowed bool) string {
 	if isAllowed {
