@@ -39,6 +39,7 @@ func EvalAllPorts(source, dest *ConnectionSide) []PortResult {
 }
 
 func Eval(source, dest *ConnectionSide, toPorts []corev1.ContainerPort) []PortResult {
+	util.Log.Debugf("Eval toPorts %+v", toPorts)
 
 	var portResults []PortResult
 	for _, toPort := range toPorts {
@@ -117,7 +118,7 @@ func evalIngress(
 		}
 	}
 
-	util.Log.Tracef("Ingress denied for lack of a matching rule")
+	util.Log.Debugf("Ingress denied for lack of a matching rule")
 	return Deny
 }
 
@@ -143,7 +144,7 @@ func evalEgress(sourcePod corev1.Pod, netpol nwv1.NetworkPolicy, toNamespace *co
 		}
 	}
 
-	util.Log.Tracef("Egress denied for lack of a matching rule")
+	util.Log.Debugf("Egress denied for lack of a matching rule")
 	return Deny
 }
 
@@ -166,7 +167,7 @@ func evalRule(
 				// Bail because by the time a user knows the podName this shouldn't be possible.
 				util.Log.Panicf("error evaluating policy in namespace %s against pod %s %s", policyNamespace, otherPod.Namespace, otherPod.Name)
 			}
-			util.Log.Debugf("IPBlock compared %t", ipBlockMatch)
+			util.Log.Tracef("IPBlock compared %t %v %+v", ipBlockMatch, *peer.IPBlock, otherPod.Status.PodIPs)
 
 			peerMatch = ipBlockMatch
 		} else {
@@ -188,6 +189,7 @@ func evalRule(
 				podMatch = MatchLabelSelector(*peer.PodSelector, otherPod.GetLabels())
 			}
 
+			util.Log.Tracef("Comparing peer selectors %v %v to pod labels %v", peer.NamespaceSelector, peer.PodSelector, otherPod.GetLabels())
 			util.Log.Debugf("Namespace and pod selectors compared: %t %t", namespaceMatch, podMatch)
 
 			peerMatch = namespaceMatch && podMatch
@@ -205,5 +207,6 @@ func evalRule(
 		}
 	}
 
+	util.Log.Tracef("evalRule did not match peers %+v on %s %s", peers, otherNamespace.Name, otherPod.Name)
 	return false
 }
