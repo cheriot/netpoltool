@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 
 	flags "github.com/jessevdk/go-flags"
 
@@ -15,6 +13,7 @@ var globalOptions ApplicationOptions
 
 type ApplicationOptions struct {
 	LogLevel   string `long:"log-level" description:"Log level (trace, debug, info, warning, error, fatal, panic)."`
+	Verbose []bool `short:"v" long:"verbose" description:"Show verbose debug information"`
 	KubeConfig string `long:"kubeconfig" description:"Absolute path to the kubeconfig file. Default to ~/.kube/config."`
 	Namespace  string `long:"namespace" description:"Namespace of the pod creating the connection."`
 }
@@ -27,14 +26,14 @@ type EvalCommandOptions struct {
 }
 
 func (c *EvalCommandOptions) Execute(args []string) error {
-	app, err := app.NewApp(globalOptions.KubeConfig)
+	a, err := app.NewApp(globalOptions.KubeConfig)
 	if err != nil {
 		return fmt.Errorf("Unable to create k8s config: %s", err.Error())
 	}
 
-	w := bufio.NewWriter(os.Stdout)
-	defer w.Flush()
-	return app.CheckAccess(w, globalOptions.Namespace, c.PodName, c.ToNamespace, c.ToPodName, c.ToPort)
+	v := app.NewConsoleView(len(globalOptions.Verbose))
+	defer v.Flush()
+	return a.CheckAccess(v, globalOptions.Namespace, c.PodName, c.ToNamespace, c.ToPodName, c.ToPort)
 }
 
 // npt eval -n foobar -p mypod --to-namespace bazbar --to-pod otherpod

@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"io"
 
 	corev1 "k8s.io/api/core/v1"
 	nwv1 "k8s.io/api/networking/v1"
@@ -50,7 +49,7 @@ func (a *App) queryConnectionSide(namespaceName, podName string) (*eval.Connecti
 	}, nil
 }
 
-func (a *App) CheckAccess(w io.Writer, namespaceStr string, podName string, toNamespaceStr string, toPodName string, toPortStr string) error {
+func (a *App) CheckAccess(v ConsoleView, namespaceStr string, podName string, toNamespaceStr string, toPodName string, toPortStr string) error {
 	// TODO parallelize data access
 
 	source, err := a.queryConnectionSide(namespaceStr, podName)
@@ -74,7 +73,7 @@ func (a *App) CheckAccess(w io.Writer, namespaceStr string, podName string, toNa
 		results = eval.Eval(source, dest, dest.GetContainerPorts())
 	}
 
-	return RenderCheckAccess(w, results, dest)
+	return RenderCheckAccess(v, results, dest)
 
 }
 

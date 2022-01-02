@@ -2,10 +2,10 @@ package app
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"strings"
 	"text/tabwriter"
+	"bufio"
 
 	nwv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -21,10 +21,40 @@ var (
 	green = color.New(color.FgGreen).SprintfFunc()
 )
 
-type ColorPalette struct {
+type ConsoleView struct {
+	Writer *bufio.Writer
+	Verbosity
 }
 
-func RenderCheckAccess(w io.Writer, portResults []eval.PortResult, dest *eval.ConnectionSide) error {
+func NewConsoleView(v int) ConsoleView {
+	return ConsoleView {
+		Writer: bufio.NewWriter(os.Stdout),
+		Verbosity: GetVerbosity(v),
+	}
+}
+
+func (c ConsoleView) Flush() {
+	c.Writer.Flush()
+}
+
+type Verbosity uint8
+
+const (
+	Default = iota // (not verbose) Show ports and their results
+	DetailMatching // (-v) Show all ports and the network policies that match both pods
+	DetailNotMatching // (-vv) Show all ports and all network policies
+)
+
+func GetVerbosity(flags int) Verbosity {
+	if flags <= 0 {
+		return Default
+	} else if flags == 1 {
+		return DetailMatching
+	}
+	return DetailNotMatching
+}
+
+func RenderCheckAccess(v ConsoleView, portResults []eval.PortResult, dest *eval.ConnectionSide) error {
 	color.New(color.FgRed).SprintfFunc()
 	if len(portResults) == 0 {
 		fmt.Printf("No ports found on %s %s.\n", dest.Namespace.Name, dest.Pod.Name)
@@ -36,27 +66,38 @@ func RenderCheckAccess(w io.Writer, portResults []eval.PortResult, dest *eval.Co
 
 	for _, portResult := range portResults {
 		fmt.Fprintf(
-			w,
+			v.Writer,
 			"%s %s %d %s\n",
 			renderAllowSymbol(portResult.Allowed),
 			portResult.ToPort.Name,
 			portResult.ToPort.ContainerPort,
 			renderAllow(portResult.Allowed))
-		renderNetpolResults(w, "    Egress", portResult.Egress)
-		renderNetpolResults(w, "    Ingress", portResult.Ingress)
+
+		if v.Verbosity > Default {
+			renderNetpolResults(v, "    Egress", portResult.Egress)
+			renderNetpolResults(v, "    Ingress", portResult.Ingress)
+		}
 	}
 
 	return nil
 }
 
-func renderNetpolResults(w io.Writer, prefix string, nprs []eval.NetpolResult) {
+func renderNetpolResults(v ConsoleView, prefix string, nprs []eval.NetpolResult) {
 	matching := util.Filter(nprs, func(npr eval.NetpolResult) bool { return npr.EvalResult != eval.NoMatch })
-	if len(matching) == 0 {
-		fmt.Fprintf(w, "%s: Allow (no matching policies)\n", prefix)
+
+	var viewable []eval.NetpolResult
+	if v.Verbosity < DetailNotMatching {
+		viewable = matching
+	} else {
+		viewable = nprs
 	}
-	for _, npr := range matching {
+
+	if len(matching) == 0 {
+		fmt.Fprintf(v.Writer, "%s: Allow (no matching policies)\n", prefix)
+	}
+	for _, npr := range viewable {
 		if npr.EvalResult != eval.NoMatch {
-			fmt.Fprintf(w, "%s: %s %s %s\n", prefix, eval.EvalResultString(npr.EvalResult), npr.Netpol.Namespace, npr.Netpol.Name)
+			fmt.Fprintf(v.Writer, "%s: %s %s %s\n", prefix, eval.EvalResultString(npr.EvalResult), npr.Netpol.Namespace, npr.Netpol.Name)
 		}
 	}
 }
