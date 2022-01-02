@@ -7,16 +7,6 @@ import (
 	"github.com/cheriot/netpoltool/internal/util"
 )
 
-type ConnectionSide struct {
-	Pod       *corev1.Pod
-	Namespace *corev1.Namespace
-	Policies  []nwv1.NetworkPolicy
-}
-
-// match port
-// normal output: accessible ports
-// what flag?: all successful combinations
-// match port egressnetpol ingressnetpol
 
 type PortResult struct {
 	ToPort         corev1.ContainerPort
@@ -44,14 +34,11 @@ func EvalResultString(er EvalResult) string {
 	return []string{"NoMatch", "Deny", "Allow"}[er]
 }
 
-func Eval(source, dest *ConnectionSide) []PortResult {
-	// figure ports
-	toPorts := make([]corev1.ContainerPort, 0)
-	for _, c := range dest.Pod.Spec.Containers {
-		for _, p := range c.Ports {
-			toPorts = append(toPorts, p)
-		}
-	}
+func EvalAllPorts(source, dest *ConnectionSide) []PortResult {
+	return Eval(source, dest, dest.GetContainerPorts())
+}
+
+func Eval(source, dest *ConnectionSide, toPorts []corev1.ContainerPort) []PortResult {
 
 	var portResults []PortResult
 	for _, toPort := range toPorts {

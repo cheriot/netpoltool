@@ -50,7 +50,7 @@ func (a *App) queryConnectionSide(namespaceName, podName string) (*eval.Connecti
 	}, nil
 }
 
-func (a *App) CheckAccess(w io.Writer, namespaceStr string, podName string, toNamespaceStr string, toPodName string) error {
+func (a *App) CheckAccess(w io.Writer, namespaceStr string, podName string, toNamespaceStr string, toPodName string, toPortStr string) error {
 	// TODO parallelize data access
 
 	source, err := a.queryConnectionSide(namespaceStr, podName)
@@ -63,7 +63,18 @@ func (a *App) CheckAccess(w io.Writer, namespaceStr string, podName string, toNa
 		return fmt.Errorf("error querying dest: %w", err)
 	}
 
-	return RenderCheckAccess(w, eval.Eval(source, dest), dest)
+	var results []eval.PortResult
+	if toPortStr != "" {
+		port, err := dest.GetPort(toPortStr)
+		if err != nil {
+			return fmt.Errorf("port name or number is not valid: %w", err)
+		}
+		results = eval.Eval(source, dest, []corev1.ContainerPort{*port})
+	} else {
+		results = eval.Eval(source, dest, dest.GetContainerPorts())
+	}
+
+	return RenderCheckAccess(w, results, dest)
 
 }
 

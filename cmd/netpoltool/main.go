@@ -34,7 +34,7 @@ func (c *EvalCommandOptions) Execute(args []string) error {
 
 	w := bufio.NewWriter(os.Stdout)
 	defer w.Flush()
-	return app.CheckAccess(w, globalOptions.Namespace, c.PodName, c.ToNamespace, c.ToPodName)
+	return app.CheckAccess(w, globalOptions.Namespace, c.PodName, c.ToNamespace, c.ToPodName, c.ToPort)
 }
 
 // npt eval -n foobar -p mypod --to-namespace bazbar --to-pod otherpod

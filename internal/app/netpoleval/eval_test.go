@@ -21,7 +21,7 @@ func TestEval(t *testing.T) {
 			Namespace: makeNamespace("NamespaceTwo"),
 		}
 
-		portResults := Eval(&source, &dest)
+		portResults := EvalAllPorts(&source, &dest)
 
 		So(portResults, ShouldResemble, []PortResult{{
 			ToPort:         dest.Pod.Spec.Containers[0].Ports[0],
@@ -49,7 +49,7 @@ func TestEval(t *testing.T) {
 			Namespace: makeNamespace("NamespaceTwo"),
 		}
 
-		portResults := Eval(&source, &dest)
+		portResults := EvalAllPorts(&source, &dest)
 
 		So(portResults, ShouldResemble, []PortResult{{
 			ToPort: dest.Pod.Spec.Containers[0].Ports[0],
@@ -81,7 +81,7 @@ func TestEval(t *testing.T) {
 			Policies:  []nwv1.NetworkPolicy{*ingressDeny},
 		}
 
-		portResults := Eval(&source, &dest)
+		portResults := EvalAllPorts(&source, &dest)
 
 		So(portResults, ShouldResemble, []PortResult{{
 			ToPort: dest.Pod.Spec.Containers[0].Ports[0],
@@ -134,7 +134,7 @@ func TestEval(t *testing.T) {
 			},
 		}
 
-		portResults := Eval(&source, &dest)
+		portResults := EvalAllPorts(&source, &dest)
 
 		So(portResults, ShouldResemble, []PortResult{{
 			ToPort: dest.Pod.Spec.Containers[0].Ports[0],
@@ -235,7 +235,7 @@ func TestEval(t *testing.T) {
 			},
 		}
 
-		portResults := Eval(&source, &dest)
+		portResults := EvalAllPorts(&source, &dest)
 
 		// Sanity check that we've set up the test correctly.
 		ipBlockMatch, err := MatchIPBlock(*egressIpBlockAllow3000.Spec.Egress[0].To[0].IPBlock, sourcePod)
@@ -331,7 +331,7 @@ func TestEval(t *testing.T) {
 			},
 		}
 
-		portResults := Eval(&source, &dest)
+		portResults := EvalAllPorts(&source, &dest)
 
 		So(portResults, ShouldResemble, []PortResult{{
 			ToPort: dest.Pod.Spec.Containers[0].Ports[0],
