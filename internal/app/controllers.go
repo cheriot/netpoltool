@@ -18,7 +18,7 @@ type App struct {
 func NewApp(kubeconfig string) (*App, error) {
 	k8sSession, err := k8s.NewSession(kubeconfig)
 	if err != nil {
-		return nil, fmt.Errorf("error creating k8s session <%s>: %w", kubeconfig, err)
+		return nil, fmt.Errorf("error creating k8s session: %w", err)
 	}
 
 	return &App{

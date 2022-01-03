@@ -28,7 +28,7 @@ type EvalCommandOptions struct {
 func (c *EvalCommandOptions) Execute(args []string) error {
 	a, err := app.NewApp(globalOptions.KubeConfig)
 	if err != nil {
-		return fmt.Errorf("Unable to create k8s config: %s", err.Error())
+		return fmt.Errorf("Fatal error: %s", err.Error())
 	}
 
 	v := app.NewConsoleView(len(globalOptions.Verbose))
