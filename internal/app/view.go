@@ -1,11 +1,11 @@
 package app
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"strings"
 	"text/tabwriter"
-	"bufio"
 
 	nwv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -27,8 +27,8 @@ type ConsoleView struct {
 }
 
 func NewConsoleView(v int) ConsoleView {
-	return ConsoleView {
-		Writer: bufio.NewWriter(os.Stdout),
+	return ConsoleView{
+		Writer:    bufio.NewWriter(os.Stdout),
 		Verbosity: GetVerbosity(v),
 	}
 }
@@ -40,9 +40,9 @@ func (c ConsoleView) Flush() {
 type Verbosity uint8
 
 const (
-	Default = iota // (not verbose) Show ports and their results
-	DetailMatching // (-v) Show all ports and the network policies that match both pods
-	DetailNotMatching // (-vv) Show all ports and all network policies
+	Default           = iota // (not verbose) Show ports and their results
+	DetailMatching           // (-v) Show all ports and the network policies that match both pods
+	DetailNotMatching        // (-vv) Show all ports and all network policies
 )
 
 func GetVerbosity(flags int) Verbosity {

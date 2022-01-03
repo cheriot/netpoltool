@@ -7,7 +7,6 @@ import (
 	"github.com/cheriot/netpoltool/internal/util"
 )
 
-
 type PortResult struct {
 	ToPort         corev1.ContainerPort
 	Egress         []NetpolResult

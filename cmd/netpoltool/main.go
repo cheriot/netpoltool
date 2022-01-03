@@ -13,7 +13,7 @@ var globalOptions ApplicationOptions
 
 type ApplicationOptions struct {
 	LogLevel   string `long:"log-level" description:"Log level (trace, debug, info, warning, error, fatal, panic)."`
-	Verbose []bool `short:"v" long:"verbose" description:"Show verbose debug information"`
+	Verbose    []bool `short:"v" long:"verbose" description:"Show verbose debug information"`
 	KubeConfig string `long:"kubeconfig" description:"Absolute path to the kubeconfig file. Default to ~/.kube/config."`
 	Namespace  string `long:"namespace" description:"Namespace of the pod creating the connection."`
 }
