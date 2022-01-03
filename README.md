@@ -7,7 +7,7 @@ CLI evaluation of Kubernetes NetworkPolicys with detailed output helpful for deb
 
 ### Install
 ```
-go install github.com/cheriot/netpoltool
+go install github.com/cheriot/netpoltool/cmd/netpoltool@latest
 ```
 
 ### Run

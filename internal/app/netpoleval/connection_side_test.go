@@ -2,6 +2,7 @@ package netpoleval
 
 import (
 	"testing"
+
 	. "github.com/smartystreets/goconvey/convey"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -10,7 +11,7 @@ func TestConnectionSide(t *testing.T) {
 
 	cs := ConnectionSide{
 		Pod: &corev1.Pod{
-			Spec: corev1.PodSpec {
+			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{
 					{
 						Ports: []corev1.ContainerPort{
