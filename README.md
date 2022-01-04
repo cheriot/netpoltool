@@ -2,6 +2,8 @@
 
 CLI evaluation of Kubernetes NetworkPolicys with detailed output helpful for debugging. Given source and destination pods, identify the NetworkPolicies that apply and whether a connection is allowed.
 
+Maturity: Alpha. The core NetworkPolicy evaluation is unit tested, but may have incorrect assertions based on my reading of the spec. Integration testing has been limited and manual.
+
 ### Requirements
 * golang 1.18beta
 
@@ -23,14 +25,14 @@ Application Options:
       --log-level=        Log level (trace, debug, info, warning, error, fatal, panic).
   -v, --verbose           Show verbose debug information
       --kubeconfig=       Absolute path to the kubeconfig file. Default to ~/.kube/config.
-      --namespace=        Namespace of the pod creating the connection.
 
 Help Options:
   -h, --help              Show this help message
 
 [eval command options]
-      -p, --pod=
+      -n, --namespace=    Namespace of the pod creating the connection.
+          --pod=          Name of the pod creating the connection.
           --to-namespace= Namespace of the pod receiving the connection.
           --to-pod=       Name of the pod receiving the connection.
-          --to-port=      Number or name of the port to connect to.
+          --to-port=      (Optional) Number or name of the port to connect to.
 ```
