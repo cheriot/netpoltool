@@ -351,14 +351,14 @@ func TestEval(t *testing.T) {
 
 	Convey("No ports specified matches all ports.", t, func() {
 		allowAllEgress := NewPolicyBuilder("AllowAllEgress").
-		SetNamespace("NamespaceOne").
-		SetEgressRules([]nwv1.NetworkPolicyEgressRule{{
-			Ports: 	[]nwv1.NetworkPolicyPort{}, // match all ports
-			To: []nwv1.NetworkPolicyPeer{{
-				NamespaceSelector: &metav1.LabelSelector{}, // match all namespaces
-			}},
-		}}).
-		Build()
+			SetNamespace("NamespaceOne").
+			SetEgressRules([]nwv1.NetworkPolicyEgressRule{{
+				Ports: []nwv1.NetworkPolicyPort{}, // match all ports
+				To: []nwv1.NetworkPolicyPeer{{
+					NamespaceSelector: &metav1.LabelSelector{}, // match all namespaces
+				}},
+			}}).
+			Build()
 
 		source := ConnectionSide{
 			Pod:       makePod("PodOne", "NamespaceOne", 0),
@@ -370,7 +370,7 @@ func TestEval(t *testing.T) {
 		dest := ConnectionSide{
 			Pod:       makePod("PodTwo", "NamespaceTwo", 0),
 			Namespace: makeNamespace("NamespaceTwo"),
-			Policies: []nwv1.NetworkPolicy{},
+			Policies:  []nwv1.NetworkPolicy{},
 		}
 
 		portResults := EvalAllPorts(&source, &dest)

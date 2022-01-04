@@ -19,7 +19,7 @@ type ApplicationOptions struct {
 }
 
 type EvalCommandOptions struct {
-	Namespace  string `long:"namespace" short:"n" required:"true" description:"Namespace of the pod creating the connection."`
+	Namespace   string `long:"namespace" short:"n" required:"true" description:"Namespace of the pod creating the connection."`
 	PodName     string `long:"pod" required:"true" description:"Name of the pod creating the connection."`
 	ToNamespace string `long:"to-namespace" required:"true" description:"Namespace of the pod receiving the connection."`
 	ToPodName   string `long:"to-pod" required:"true" description:"Name of the pod receiving the connection."`
