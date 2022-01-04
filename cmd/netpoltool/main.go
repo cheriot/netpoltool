@@ -13,9 +13,9 @@ import (
 var globalOptions ApplicationOptions
 
 type ApplicationOptions struct {
-	LogLevel   string `long:"log-level" description:"Log level (trace, debug, info, warning, error, fatal, panic)."`
-	Verbose    []bool `short:"v" long:"verbose" description:"Show verbose debug information"`
+	LogLevel   string `long:"log-level" hidden:"true" description:"Log level (trace, debug, info, warning, error, fatal, panic)."`
 	KubeConfig string `long:"kubeconfig" description:"Absolute path to the kubeconfig file. Default to ~/.kube/config."`
+	Verbose    []bool `short:"v" long:"verbose" description:"Show more detail on NetworkPolicy evaluation."`
 }
 
 type EvalCommandOptions struct {
@@ -23,7 +23,7 @@ type EvalCommandOptions struct {
 	PodName     string `long:"pod" required:"true" description:"Name of the pod creating the connection."`
 	ToNamespace string `long:"to-namespace" required:"true" description:"Namespace of the pod receiving the connection."`
 	ToPodName   string `long:"to-pod" required:"true" description:"Name of the pod receiving the connection."`
-	ToPort      string `long:"to-port" description:"Number or name of the port to connect to."`
+	ToPort      string `long:"to-port" description:"(Optional) Number or name of the port to connect to."`
 }
 
 func (c *EvalCommandOptions) Execute(args []string) error {

@@ -22,9 +22,8 @@ Usage:
 Given source and destination pods, evaluate if Network Policies allow the source pod to access any ports on the destination pod.
 
 Application Options:
-      --log-level=        Log level (trace, debug, info, warning, error, fatal, panic).
-  -v, --verbose           Show verbose debug information
       --kubeconfig=       Absolute path to the kubeconfig file. Default to ~/.kube/config.
+  -v, --verbose           Show more detail on NetworkPolicy evaluation (-v, -vv).
 
 Help Options:
   -h, --help              Show this help message
