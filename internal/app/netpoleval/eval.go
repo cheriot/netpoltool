@@ -201,6 +201,11 @@ func evalRule(
 					return true
 				}
 			}
+
+			if len(ports) == 0 {
+				util.Log.Debugf("Peer match and empty port list so all ports allowed.")
+				return true
+			}
 			util.Log.Debugf("Peer match, but port not found in policy %+v", toPort)
 			return false
 		}

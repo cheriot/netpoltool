@@ -349,6 +349,44 @@ func TestEval(t *testing.T) {
 		}})
 	})
 
+	Convey("No ports specified matches all ports.", t, func() {
+		allowAllEgress := NewPolicyBuilder("AllowAllEgress").
+		SetNamespace("NamespaceOne").
+		SetEgressRules([]nwv1.NetworkPolicyEgressRule{{
+			Ports: 	[]nwv1.NetworkPolicyPort{}, // match all ports
+			To: []nwv1.NetworkPolicyPeer{{
+				NamespaceSelector: &metav1.LabelSelector{}, // match all namespaces
+			}},
+		}}).
+		Build()
+
+		source := ConnectionSide{
+			Pod:       makePod("PodOne", "NamespaceOne", 0),
+			Namespace: makeNamespace("NamespaceOne"),
+			Policies: []nwv1.NetworkPolicy{
+				*allowAllEgress,
+			},
+		}
+		dest := ConnectionSide{
+			Pod:       makePod("PodTwo", "NamespaceTwo", 0),
+			Namespace: makeNamespace("NamespaceTwo"),
+			Policies: []nwv1.NetworkPolicy{},
+		}
+
+		portResults := EvalAllPorts(&source, &dest)
+
+		So(portResults, ShouldResemble, []PortResult{{
+			ToPort: dest.Pod.Spec.Containers[0].Ports[0],
+			Egress: []NetpolResult{
+				{Netpol: *allowAllEgress, EvalResult: Allow},
+			},
+			EgressAllowed:  true,
+			IngressAllowed: true,
+			Allowed:        true,
+		}})
+
+	})
+
 	// TODO: Validate that Rules are OR'ed within a single Policy
 }
 
