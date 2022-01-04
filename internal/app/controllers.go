@@ -73,7 +73,7 @@ func (a *App) CheckAccess(v ConsoleView, namespaceStr string, podName string, to
 		results = eval.Eval(source, dest, dest.GetContainerPorts())
 	}
 
-	return RenderCheckAccess(v, results, dest)
+	return RenderCheckAccess(v, results, source, dest)
 
 }
 

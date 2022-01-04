@@ -54,7 +54,7 @@ func GetVerbosity(flags int) Verbosity {
 	return DetailNotMatching
 }
 
-func RenderCheckAccess(v ConsoleView, portResults []eval.PortResult, dest *eval.ConnectionSide) error {
+func RenderCheckAccess(v ConsoleView, portResults []eval.PortResult, source, dest *eval.ConnectionSide) error {
 	color.New(color.FgRed).SprintfFunc()
 	if len(portResults) == 0 {
 		fmt.Printf("No ports found on %s %s.\n", dest.Namespace.Name, dest.Pod.Name)
@@ -79,8 +79,10 @@ func RenderCheckAccess(v ConsoleView, portResults []eval.PortResult, dest *eval.
 			renderAllow(portResult.Allowed))
 
 		if v.Verbosity > Default {
-			renderNetpolResults(v, "    Egress", portResult.Egress)
-			renderNetpolResults(v, "    Ingress", portResult.Ingress)
+			fmt.Fprintf(v.Writer, "      %s Egress from pod %s/%s\n", renderAllowSymbol(portResult.EgressAllowed), source.Namespace.Name, dest.Pod.Name)
+			renderNetpolResults(v, "            ", portResult.Egress)
+			fmt.Fprintf(v.Writer, "      %s Ingress to pod %s/%s\n", renderAllowSymbol(portResult.IngressAllowed), dest.Namespace.Name, dest.Pod.Name)
+			renderNetpolResults(v, "            ", portResult.Ingress)
 		}
 	}
 
@@ -102,11 +104,11 @@ func renderNetpolResults(v ConsoleView, prefix string, nprs []eval.NetpolResult)
 	}
 
 	if len(matching) == 0 {
-		fmt.Fprintf(v.Writer, "%s: Allow (no matching policies)\n", prefix)
+		fmt.Fprintf(v.Writer, "%s%s (no matching policies)\n", prefix, renderEvalResult(eval.Allow))
 	}
 	for _, npr := range viewable {
 		if npr.EvalResult != eval.NoMatch {
-			fmt.Fprintf(v.Writer, "%s: %s %s %s\n", prefix, eval.EvalResultString(npr.EvalResult), npr.Netpol.Namespace, npr.Netpol.Name)
+			fmt.Fprintf(v.Writer, "%s%s from NetworkPolicy %s/%s\n", prefix, renderEvalResult(npr.EvalResult), npr.Netpol.Namespace, npr.Netpol.Name)
 		}
 	}
 }
@@ -117,11 +119,24 @@ func renderAllowSymbol(isAllowed bool) string {
 	}
 	return red("✗")
 }
+
 func renderAllow(isAllowed bool) string {
 	if isAllowed {
 		return "Allow"
 	}
 	return "Deny"
+}
+
+func renderEvalResult(er eval.EvalResult) string {
+	switch er {
+	case eval.Allow:
+		return green("Allow")
+	case eval.Deny:
+		return red("Deny")
+	case eval.NoMatch:
+		return "No Match"
+	}
+	return "Unknown"
 }
 
 func RenderNetPolMatch(matches []nwv1.NetworkPolicy) {
