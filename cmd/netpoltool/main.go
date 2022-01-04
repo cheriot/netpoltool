@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	flags "github.com/jessevdk/go-flags"
 
@@ -15,13 +16,13 @@ type ApplicationOptions struct {
 	LogLevel   string `long:"log-level" description:"Log level (trace, debug, info, warning, error, fatal, panic)."`
 	Verbose    []bool `short:"v" long:"verbose" description:"Show verbose debug information"`
 	KubeConfig string `long:"kubeconfig" description:"Absolute path to the kubeconfig file. Default to ~/.kube/config."`
-	Namespace  string `long:"namespace" description:"Namespace of the pod creating the connection."`
 }
 
 type EvalCommandOptions struct {
-	PodName     string `long:"pod" short:"p" descripyion:"Name of the pod initiating the connection."`
-	ToNamespace string `long:"to-namespace" description:"Namespace of the pod receiving the connection."`
-	ToPodName   string `long:"to-pod" description:"Name of the pod receiving the connection."`
+	Namespace   string `long:"namespace" short:"n" required:"true" description:"Namespace of the pod creating the connection."`
+	PodName     string `long:"pod" required:"true" description:"Name of the pod creating the connection."`
+	ToNamespace string `long:"to-namespace" required:"true" description:"Namespace of the pod receiving the connection."`
+	ToPodName   string `long:"to-pod" required:"true" description:"Name of the pod receiving the connection."`
 	ToPort      string `long:"to-port" description:"Number or name of the port to connect to."`
 }
 
@@ -33,7 +34,7 @@ func (c *EvalCommandOptions) Execute(args []string) error {
 
 	v := app.NewConsoleView(len(globalOptions.Verbose))
 	defer v.Flush()
-	return a.CheckAccess(v, globalOptions.Namespace, c.PodName, c.ToNamespace, c.ToPodName, c.ToPort)
+	return a.CheckAccess(v, c.Namespace, c.PodName, c.ToNamespace, c.ToPodName, c.ToPort)
 }
 
 // npt eval -n foobar -p mypod --to-namespace bazbar --to-pod otherpod
@@ -66,7 +67,7 @@ func main() {
 
 	_, err = parser.Parse()
 	if err != nil {
-		// err contains Usage when called with --help
-		util.Log.Tracef("Error parsing cli: %s", err.Error())
+		// TODO err when no port is accessible
+		os.Exit(1)
 	}
 }

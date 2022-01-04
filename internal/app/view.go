@@ -64,7 +64,12 @@ func RenderCheckAccess(v ConsoleView, portResults []eval.PortResult, dest *eval.
 	//     Egress from ns-npt-0 pod-name-asdf Allow
 	//     Ingress to ns-npt-1 pod-name-fdas Allow
 
+	accessibleCount := 0
 	for _, portResult := range portResults {
+		if portResult.Allowed {
+			accessibleCount++
+		}
+
 		fmt.Fprintf(
 			v.Writer,
 			"%s %s %d %s\n",
@@ -79,6 +84,10 @@ func RenderCheckAccess(v ConsoleView, portResults []eval.PortResult, dest *eval.
 		}
 	}
 
+	if accessibleCount == 0 {
+		// print message and trigger a non-zero exit code
+		return fmt.Errorf("no ports accessible")
+	}
 	return nil
 }
 
