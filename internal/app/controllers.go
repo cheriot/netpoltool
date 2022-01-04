@@ -59,7 +59,7 @@ func (a *App) CheckAccess(v ConsoleView, namespaceStr string, podName string, to
 
 	dest, err := a.queryConnectionSide(toNamespaceStr, toPodName)
 	if err != nil {
-		return fmt.Errorf("error querying dest: %w", err)
+		return fmt.Errorf("error querying destination: %w", err)
 	}
 
 	var results []eval.PortResult
