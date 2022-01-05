@@ -1,6 +1,9 @@
 package netpoleval
 
 import (
+	"fmt"
+	"os"
+
 	corev1 "k8s.io/api/core/v1"
 	nwv1 "k8s.io/api/networking/v1"
 
@@ -39,6 +42,13 @@ func EvalAllPorts(source, dest *ConnectionSide) []PortResult {
 
 func Eval(source, dest *ConnectionSide, toPorts []corev1.ContainerPort) []PortResult {
 	util.Log.Debugf("Eval toPorts %+v", toPorts)
+
+	if source.Pod.Spec.NodeName != "" && source.Pod.Spec.NodeName == dest.Pod.Spec.NodeName {
+		// "traffic to and from the node where a Pod is running is always allowed, regardless of the IP address of the Pod or the node"
+		// https://kubernetes.io/docs/concepts/services-networking/network-policies/
+		// That's probably not what the user is interested in so continue evaluation.
+		fmt.Fprintf(os.Stderr, "Source and destination are on the same Node, %s, so kubernetes will not evaluate Network Policies and allow access. Evaluation will continue as if this were not the case.", source.Pod.Spec.NodeName)
+	}
 
 	var portResults []PortResult
 	for _, toPort := range toPorts {
