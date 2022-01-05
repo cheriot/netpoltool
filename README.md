@@ -2,10 +2,15 @@
 
 CLI evaluation of Kubernetes NetworkPolicys with detailed output helpful for debugging. Given source and destination pods, identify the NetworkPolicies that apply and whether a connection is allowed.
 
-Maturity: Alpha. The core NetworkPolicy evaluation is unit tested, but may have incorrect assertions based on my reading of the spec. Integration testing has been limited and manual.
+### Maturity Level
+Alpha. The core NetworkPolicy evaluation is unit tested, but may have incorrect assertions based on my reading of the spec. Comparison to real k8s implementations has been limited and manual.
 
 ### Requirements
-* golang 1.18beta
+With a recent, stable version of go installed
+```
+go install golang.org/dl/go1.18beta1@latest
+go1.18beta1 download
+```
 
 ### Install
 ```
@@ -13,7 +18,7 @@ go1.18beta1 install github.com/cheriot/netpoltool/cmd/netpoltool@latest
 ```
 
 ### Run
-netpoltool eval --namespace=_sourceNamespace_ --pod=_sourcePod_ --to-namespace=_destinationNamespace_ --to-pod=_destinationPod_
+netpoltool eval -v --namespace=_sourceNamespace_ --pod=_sourcePod_ --to-namespace=_destinationNamespace_ --to-pod=_destinationPod_
 
 ```
 Usage:
