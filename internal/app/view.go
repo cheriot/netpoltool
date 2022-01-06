@@ -54,7 +54,7 @@ func GetVerbosity(flags int) Verbosity {
 	return DetailNotMatching
 }
 
-func RenderCheckAccess(v ConsoleView, portResults []eval.PortResult, source, dest *eval.ConnectionSide) error {
+func RenderCheckAccess(v ConsoleView, portResults []eval.PortResult, source, dest *eval.PodConnection) error {
 	color.New(color.FgRed).SprintfFunc()
 	if len(portResults) == 0 {
 		fmt.Printf("No ports found on %s %s.\n", dest.Namespace.Name, dest.Pod.Name)

@@ -26,7 +26,7 @@ func NewApp(kubeconfig string) (*App, error) {
 	}, nil
 }
 
-func (a *App) queryConnectionSide(namespaceName, podName string) (*eval.ConnectionSide, error) {
+func (a *App) queryConnectionSide(namespaceName, podName string) (*eval.PodConnection, error) {
 	pod, err := a.k8sSession.QueryPod(context.TODO(), namespaceName, podName)
 	if err != nil {
 		return nil, fmt.Errorf("error querying pod %s %s: %w", namespaceName, podName, err)
@@ -42,11 +42,7 @@ func (a *App) queryConnectionSide(namespaceName, podName string) (*eval.Connecti
 		return nil, fmt.Errorf("error querying for netpol list %s: %w", namespace, err)
 	}
 
-	return &eval.ConnectionSide{
-		Pod:       pod,
-		Namespace: namespace,
-		Policies:  netpolList.Items,
-	}, nil
+	return eval.NewPodConnection(pod, namespace, netpolList.Items)
 }
 
 func (a *App) CheckAccess(v ConsoleView, namespaceStr string, podName string, toNamespaceStr string, toPodName string, toPortStr string) error {

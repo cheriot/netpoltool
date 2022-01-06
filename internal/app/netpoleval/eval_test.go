@@ -12,11 +12,11 @@ import (
 
 func TestEval(t *testing.T) {
 	Convey("Absence of NetworkPolicy means Allow", t, func() {
-		source := ConnectionSide{
+		source := PodConnection{
 			Pod:       makePod("PodOne", "NamespaceOne", 0),
 			Namespace: makeNamespace("NamespaceOne"),
 		}
-		dest := ConnectionSide{
+		dest := PodConnection{
 			Pod:       makePod("PodTwo", "NamespaceTwo", 3000),
 			Namespace: makeNamespace("NamespaceTwo"),
 		}
@@ -39,12 +39,12 @@ func TestEval(t *testing.T) {
 			SetDenyEgress().
 			Build()
 
-		source := ConnectionSide{
+		source := PodConnection{
 			Pod:       makePod("PodOne", "NamespaceOne", 0),
 			Namespace: makeNamespace("NamespaceOne"),
 			Policies:  []nwv1.NetworkPolicy{*egressDeny},
 		}
-		dest := ConnectionSide{
+		dest := PodConnection{
 			Pod:       makePod("PodTwo", "NamespaceTwo", 3000),
 			Namespace: makeNamespace("NamespaceTwo"),
 		}
@@ -66,7 +66,7 @@ func TestEval(t *testing.T) {
 
 	Convey("Deny all on ingress", t, func() {
 
-		source := ConnectionSide{
+		source := PodConnection{
 			Pod:       makePod("PodOne", "NamespaceOne", 0),
 			Namespace: makeNamespace("NamespaceOne"),
 		}
@@ -75,7 +75,7 @@ func TestEval(t *testing.T) {
 			SetNamespace("NamespaceTwo").
 			SetDenyIngress().
 			Build()
-		dest := ConnectionSide{
+		dest := PodConnection{
 			Pod:       makePod("PodTwo", "NamespaceTwo", 3000),
 			Namespace: makeNamespace("NamespaceTwo"),
 			Policies:  []nwv1.NetworkPolicy{*ingressDeny},
@@ -107,7 +107,7 @@ func TestEval(t *testing.T) {
 			SetDenyEgress().
 			Build()
 
-		source := ConnectionSide{
+		source := PodConnection{
 			Pod:       makePod("PodOne", "NamespaceOne", 0),
 			Namespace: makeNamespace("NamespaceOne"),
 			Policies: []nwv1.NetworkPolicy{
@@ -125,7 +125,7 @@ func TestEval(t *testing.T) {
 			SetPodLabelSelector("name", "doesnotmatch").
 			SetDenyIngress().
 			Build()
-		dest := ConnectionSide{
+		dest := PodConnection{
 			Pod:       makePod("PodTwo", "NamespaceTwo", 3000),
 			Namespace: makeNamespace("NamespaceTwo"),
 			Policies: []nwv1.NetworkPolicy{
@@ -187,15 +187,15 @@ func TestEval(t *testing.T) {
 			}}).
 			Build()
 
-		source := ConnectionSide{
-			Pod:       sourcePod,
-			Namespace: makeNamespace("NamespaceOne"),
-			Policies: []nwv1.NetworkPolicy{
+		source, err := NewPodConnection(
+			sourcePod,
+			makeNamespace("NamespaceOne"),
+			[]nwv1.NetworkPolicy{
 				*egressDeny,
 				*egressLabelsAllow3000,
 				*egressIpBlockAllow3000,
-			},
-		}
+			})
+		So(err, ShouldBeNil)
 
 		// Dest and Ingress policies
 		ingressDeny := NewPolicyBuilder("IngressDenyAll").
@@ -225,20 +225,20 @@ func TestEval(t *testing.T) {
 				}},
 			}}).
 			Build()
-		dest := ConnectionSide{
-			Pod:       destPod,
-			Namespace: makeNamespace("NamespaceTwo"),
-			Policies: []nwv1.NetworkPolicy{
+		dest, err := NewPodConnection(
+			destPod,
+			makeNamespace("NamespaceTwo"),
+			[]nwv1.NetworkPolicy{
 				*ingressDeny,
 				*ingressLabelsAllow3000,
 				*ingressIpBlockAllow3000,
-			},
-		}
+			})
+		So(err, ShouldBeNil)
 
-		portResults := EvalAllPorts(&source, &dest)
+		portResults := EvalAllPorts(source, dest)
 
 		// Sanity check that we've set up the test correctly.
-		ipBlockMatch, err := MatchIPBlock(*egressIpBlockAllow3000.Spec.Egress[0].To[0].IPBlock, sourcePod)
+		ipBlockMatch, err := source.MatchIPBlock(*egressIpBlockAllow3000.Spec.Egress[0].To[0].IPBlock)
 		So(err, ShouldBeNil)
 		So(ipBlockMatch, ShouldBeTrue)
 		So(PortContains(egressLabelsAllow3000.Spec.Egress[0].Ports[0], dest.Pod.Spec.Containers[0].Ports[0]), ShouldBeTrue)
@@ -291,7 +291,7 @@ func TestEval(t *testing.T) {
 				}},
 			}}).
 			Build()
-		source := ConnectionSide{
+		source := PodConnection{
 			Pod:       makePod("PodOne", "NamespaceOne", 0),
 			Namespace: makeNamespace("NamespaceOne"),
 			Policies: []nwv1.NetworkPolicy{
@@ -322,7 +322,7 @@ func TestEval(t *testing.T) {
 				}},
 			}}).
 			Build()
-		dest := ConnectionSide{
+		dest := PodConnection{
 			Pod:       destPod,
 			Namespace: makeNamespace("NamespaceTwo"),
 			Policies: []nwv1.NetworkPolicy{
@@ -360,14 +360,14 @@ func TestEval(t *testing.T) {
 			}}).
 			Build()
 
-		source := ConnectionSide{
+		source := PodConnection{
 			Pod:       makePod("PodOne", "NamespaceOne", 0),
 			Namespace: makeNamespace("NamespaceOne"),
 			Policies: []nwv1.NetworkPolicy{
 				*allowAllEgress,
 			},
 		}
-		dest := ConnectionSide{
+		dest := PodConnection{
 			Pod:       makePod("PodTwo", "NamespaceTwo", 0),
 			Namespace: makeNamespace("NamespaceTwo"),
 			Policies:  []nwv1.NetworkPolicy{},

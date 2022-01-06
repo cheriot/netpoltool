@@ -37,10 +37,6 @@ func (c *EvalCommandOptions) Execute(args []string) error {
 	return a.CheckAccess(v, c.Namespace, c.PodName, c.ToNamespace, c.ToPodName, c.ToPort)
 }
 
-// npt eval -n foobar -p mypod --to-namespace bazbar --to-pod otherpod
-// npt eval -n foobar -p mypod --to-namespace bazbar --to-labels label=value --to-ip=IP
-// Accept deployment objects. Maybe services?
-
 func main() {
 	globalOptions = ApplicationOptions{}
 	parser := flags.NewParser(&globalOptions, flags.Default)
@@ -67,7 +63,7 @@ func main() {
 
 	_, err = parser.Parse()
 	if err != nil {
-		// TODO err when no port is accessible
+		// err from either the parser or the executed command
 		os.Exit(1)
 	}
 }

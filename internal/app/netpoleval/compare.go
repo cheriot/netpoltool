@@ -75,20 +75,12 @@ func MatchLabelSelector(podSelector metav1.LabelSelector, podLabels map[string]s
 	return true
 }
 
-func MatchIPBlock(ipBlock nwv1.IPBlock, pod *corev1.Pod) (bool, error) {
-
-	ipStr := pod.Status.PodIP // Do we need to check the ipv6 addr in Status.PodIPs?
-	if ipStr == "" {
-		// A new pod may not have been assigned an IP yet. An expected case, but inform the user that it's different
-		// than a NetworkPolicy evaluating to false.
-		return false, fmt.Errorf("pod %s does not have an PodIP so ipBlock netpols cannot be evaluated.", pod.Name)
-	}
+func MatchIPBlock(ipBlock nwv1.IPBlock, ip net.IP, ipStr string) (bool, error) {
 	for _, exceptIpStr := range ipBlock.Except {
 		if ipStr == exceptIpStr {
 			return false, nil
 		}
 	}
-	ip := net.ParseIP(pod.Status.PodIP)
 
 	_, ipNet, err := net.ParseCIDR(ipBlock.CIDR)
 	if err != nil {
@@ -96,4 +88,15 @@ func MatchIPBlock(ipBlock nwv1.IPBlock, pod *corev1.Pod) (bool, error) {
 	}
 
 	return ipNet.Contains(ip), nil
+}
+
+func MatchIPBlockToPod(ipBlock nwv1.IPBlock, pod *corev1.Pod) (bool, error) {
+	ipStr := pod.Status.PodIP // Do we need to check the ipv6 addr in Status.PodIPs?
+	if ipStr == "" {
+		// A new pod may not have been assigned an IP yet. An expected case, but inform the user that it's different
+		// than a NetworkPolicy evaluating to false.
+		return false, fmt.Errorf("blank IP so ipBlock netpols cannot be evaluated.")
+	}
+	ip := net.ParseIP(ipStr)
+	return MatchIPBlock(ipBlock, ip, ipStr)
 }

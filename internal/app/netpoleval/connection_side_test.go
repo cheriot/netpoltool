@@ -9,7 +9,7 @@ import (
 
 func TestConnectionSide(t *testing.T) {
 
-	cs := ConnectionSide{
+	cs := PodConnection{
 		Pod: &corev1.Pod{
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{

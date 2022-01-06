@@ -20,8 +20,7 @@ type K8sSession struct {
 	// fyi, Config has max QPS and Burst settings
 	config *restclient.Config
 	// Share the same http connections for all clients.
-	// TODO make private
-	Clientset *kubernetes.Clientset
+	clientset *kubernetes.Clientset
 }
 
 func NewSession(kubeconfig string) (*K8sSession, error) {
@@ -43,12 +42,12 @@ func NewSession(kubeconfig string) (*K8sSession, error) {
 
 	return &K8sSession{
 		config:    config,
-		Clientset: clientset,
+		clientset: clientset,
 	}, nil
 }
 
 func (s *K8sSession) QueryPod(ctx context.Context, namespace string, podName string) (*corev1.Pod, error) {
-	pod, err := s.Clientset.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
+	pod, err := s.clientset.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +60,7 @@ func (s *K8sSession) QueryPod(ctx context.Context, namespace string, podName str
 }
 
 func (s *K8sSession) QueryNetPolList(ctx context.Context, namespace string) (*nwv1.NetworkPolicyList, error) {
-	netpolList, err := s.Clientset.NetworkingV1().NetworkPolicies(namespace).List(context.TODO(), metav1.ListOptions{})
+	netpolList, err := s.clientset.NetworkingV1().NetworkPolicies(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("error querying for NetworkPolicies %s", err.Error())
 	}
@@ -69,5 +68,5 @@ func (s *K8sSession) QueryNetPolList(ctx context.Context, namespace string) (*nw
 }
 
 func (s *K8sSession) QueryNamespace(ctx context.Context, namespace string) (*corev1.Namespace, error) {
-	return s.Clientset.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
+	return s.clientset.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
 }

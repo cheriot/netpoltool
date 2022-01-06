@@ -1,6 +1,7 @@
 package netpoleval
 
 import (
+	"net"
 	"testing"
 
 	"github.com/smartystreets/goconvey/convey"
@@ -249,40 +250,28 @@ func TestMatchIPBlock(t *testing.T) {
 		ipBlock := nwv1.IPBlock{
 			CIDR: "10.1.1.0/16",
 		}
-		ipInCidr := "10.1.1.0"
-		ipOutsideCidr := "20.1.1.0"
-
-		makePod := func(podIp string) *corev1.Pod {
-			return &corev1.Pod{
-				Status: corev1.PodStatus{
-					PodIP: podIp,
-				},
-			}
-		}
+		inCidrStr := "10.1.1.0"
+		inCidrIP := net.ParseIP(inCidrStr)
+		outsideCidrStr := "20.1.1.0"
+		outsideCidrIp := net.ParseIP(outsideCidrStr)
 
 		Convey("Matches an IP in the ipBlock", func() {
-			isMatch, err := MatchIPBlock(ipBlock, makePod(ipInCidr))
+			isMatch, err := MatchIPBlock(ipBlock, inCidrIP, inCidrStr)
 			So(err, ShouldBeNil)
 			So(isMatch, ShouldBeTrue)
 		})
 
 		Convey("Does not match an IP outside the ipBlock", func() {
-			isMatch, err := MatchIPBlock(ipBlock, makePod(ipOutsideCidr))
+			isMatch, err := MatchIPBlock(ipBlock, outsideCidrIp, outsideCidrStr)
 			So(err, ShouldBeNil)
 			So(isMatch, ShouldBeFalse)
 		})
 
 		Convey("Does not match an IP inside the ipBlock that's in the Except list", func() {
 			ipBlockExcept := ipBlock.DeepCopy()
-			ipBlockExcept.Except = []string{ipInCidr}
-			isMatch, err := MatchIPBlock(*ipBlockExcept, makePod(ipInCidr))
+			ipBlockExcept.Except = []string{inCidrStr}
+			isMatch, err := MatchIPBlock(*ipBlockExcept, inCidrIP, inCidrStr)
 			So(err, ShouldBeNil)
-			So(isMatch, ShouldBeFalse)
-		})
-
-		Convey("Returns err when pod does not have an IP", func() {
-			isMatch, err := MatchIPBlock(ipBlock, makePod(""))
-			So(err, ShouldBeError)
 			So(isMatch, ShouldBeFalse)
 		})
 	})
