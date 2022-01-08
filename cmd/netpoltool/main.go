@@ -23,7 +23,7 @@ type ApplicationOptions struct {
 type EvalCommandOptions struct {
 	Namespace    string `long:"namespace" short:"n" required:"true" description:"Namespace of the pod creating the connection."`
 	PodName      string `long:"pod" required:"true" description:"Name of the pod creating the connection."`
-	ToNamespace  string `long:"to-namespace" required:"true" description:"Namespace of the pod receiving the connection."`
+	ToNamespace  string `long:"to-namespace" description:"Namespace of the pod receiving the connection."`
 	ToPodName    string `long:"to-pod" description:"Name of the pod receiving the connection."`
 	ToExternalIP string `long:"to-ext-ip" description:"IP address identifying a host *outside* the kubernetes cluster the connection originates in."`
 	ToProtocol   string `long:"to-protocol" choice:"udp" choice:"tcp" choice:"sctp" description:"Used when --to-ext-ip is specified, specify the protocol of the connection (udp, tcp, or sctp). Default to tcp."`
@@ -36,6 +36,7 @@ func (c *EvalCommandOptions) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
+
 	if c.ToExternalIP != "" {
 		if c.ToProtocol == "" {
 			fmt.Fprintln(os.Stderr, "No protocol specified so defaulting to TCP. Use --to-protocol to change.")
@@ -44,6 +45,13 @@ func (c *EvalCommandOptions) Execute(args []string) error {
 		if c.ToPort == "" {
 			return fmt.Errorf("--to-port is required when using --to-ext-ip")
 		}
+		if c.ToNamespace != "" {
+			return fmt.Errorf("Cannot use --to-namespace and --to-ext-ip at the same time. Only use --to-ext-ip for IPs outside the current cluster.")
+		}
+	}
+
+	if c.ToPodName != "" && c.ToNamespace == "" {
+		return fmt.Errorf("--to-namespace is required when using --to-pod")
 	}
 
 	a, err := app.NewApp(globalOptions.KubeConfig)
