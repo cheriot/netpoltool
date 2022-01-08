@@ -12,19 +12,23 @@ import (
 
 func TestEval(t *testing.T) {
 	Convey("Absence of NetworkPolicy means Allow", t, func() {
-		source := PodConnection{
-			Pod:       makePod("PodOne", "NamespaceOne", 0),
-			Namespace: makeNamespace("NamespaceOne"),
-		}
-		dest := PodConnection{
-			Pod:       makePod("PodTwo", "NamespaceTwo", 3000),
-			Namespace: makeNamespace("NamespaceTwo"),
-		}
+		source, err := NewPodConnection(
+			makePod("PodOne", "NamespaceOne", 0),
+			makeNamespace("NamespaceOne"),
+			[]nwv1.NetworkPolicy{},
+			"")
+		So(err, ShouldBeNil)
+		dest, err := NewPodConnection(
+			makePod("PodTwo", "NamespaceTwo", 3000),
+			makeNamespace("NamespaceTwo"),
+			[]nwv1.NetworkPolicy{},
+			"")
+		So(err, ShouldBeNil)
 
-		portResults := EvalAllPorts(&source, &dest)
+		portResults := Eval(source, dest)
 
 		So(portResults, ShouldResemble, []PortResult{{
-			ToPort:         dest.Pod.Spec.Containers[0].Ports[0],
+			ToPort:         dest.GetPorts()[0],
 			Egress:         nil,
 			Ingress:        nil,
 			EgressAllowed:  true,
@@ -39,20 +43,23 @@ func TestEval(t *testing.T) {
 			SetDenyEgress().
 			Build()
 
-		source := PodConnection{
-			Pod:       makePod("PodOne", "NamespaceOne", 0),
-			Namespace: makeNamespace("NamespaceOne"),
-			Policies:  []nwv1.NetworkPolicy{*egressDeny},
-		}
-		dest := PodConnection{
-			Pod:       makePod("PodTwo", "NamespaceTwo", 3000),
-			Namespace: makeNamespace("NamespaceTwo"),
-		}
+		source, err := NewPodConnection(
+			makePod("PodOne", "NamespaceOne", 0),
+			makeNamespace("NamespaceOne"),
+			[]nwv1.NetworkPolicy{*egressDeny},
+			"")
+		So(err, ShouldBeNil)
+		dest, err := NewPodConnection(
+			makePod("PodTwo", "NamespaceTwo", 3000),
+			makeNamespace("NamespaceTwo"),
+			[]nwv1.NetworkPolicy{},
+			"")
+		So(err, ShouldBeNil)
 
-		portResults := EvalAllPorts(&source, &dest)
+		portResults := Eval(source, dest)
 
 		So(portResults, ShouldResemble, []PortResult{{
-			ToPort: dest.Pod.Spec.Containers[0].Ports[0],
+			ToPort: dest.GetPorts()[0],
 			Egress: []NetpolResult{{
 				Netpol:     *egressDeny,
 				EvalResult: Deny,
@@ -66,25 +73,28 @@ func TestEval(t *testing.T) {
 
 	Convey("Deny all on ingress", t, func() {
 
-		source := PodConnection{
-			Pod:       makePod("PodOne", "NamespaceOne", 0),
-			Namespace: makeNamespace("NamespaceOne"),
-		}
+		source, err := NewPodConnection(
+			makePod("PodOne", "NamespaceOne", 0),
+			makeNamespace("NamespaceOne"),
+			[]nwv1.NetworkPolicy{},
+			"")
+		So(err, ShouldBeNil)
 
 		ingressDeny := NewPolicyBuilder("IngressDenyAll").
 			SetNamespace("NamespaceTwo").
 			SetDenyIngress().
 			Build()
-		dest := PodConnection{
-			Pod:       makePod("PodTwo", "NamespaceTwo", 3000),
-			Namespace: makeNamespace("NamespaceTwo"),
-			Policies:  []nwv1.NetworkPolicy{*ingressDeny},
-		}
+		dest, err := NewPodConnection(
+			makePod("PodTwo", "NamespaceTwo", 3000),
+			makeNamespace("NamespaceTwo"),
+			[]nwv1.NetworkPolicy{*ingressDeny},
+			"")
+		So(err, ShouldBeNil)
 
-		portResults := EvalAllPorts(&source, &dest)
+		portResults := Eval(source, dest)
 
 		So(portResults, ShouldResemble, []PortResult{{
-			ToPort: dest.Pod.Spec.Containers[0].Ports[0],
+			ToPort: dest.GetPorts()[0],
 			Egress: nil,
 			Ingress: []NetpolResult{{
 				Netpol:     *ingressDeny,
@@ -107,14 +117,15 @@ func TestEval(t *testing.T) {
 			SetDenyEgress().
 			Build()
 
-		source := PodConnection{
-			Pod:       makePod("PodOne", "NamespaceOne", 0),
-			Namespace: makeNamespace("NamespaceOne"),
-			Policies: []nwv1.NetworkPolicy{
+		source, err := NewPodConnection(
+			makePod("PodOne", "NamespaceOne", 0),
+			makeNamespace("NamespaceOne"),
+			[]nwv1.NetworkPolicy{
 				*sourcePolicyTypeMismatch,
 				*egressLabelMismatch,
 			},
-		}
+			"")
+		So(err, ShouldBeNil)
 
 		destPolicyTypeMismatch := NewPolicyBuilder("EgressDenyAll").
 			SetNamespace("NamespaceTwo").
@@ -125,19 +136,20 @@ func TestEval(t *testing.T) {
 			SetPodLabelSelector("name", "doesnotmatch").
 			SetDenyIngress().
 			Build()
-		dest := PodConnection{
-			Pod:       makePod("PodTwo", "NamespaceTwo", 3000),
-			Namespace: makeNamespace("NamespaceTwo"),
-			Policies: []nwv1.NetworkPolicy{
+		dest, err := NewPodConnection(
+			makePod("PodTwo", "NamespaceTwo", 3000),
+			makeNamespace("NamespaceTwo"),
+			[]nwv1.NetworkPolicy{
 				*destPolicyTypeMismatch,
 				*ingressLabelMismatch,
 			},
-		}
+			"")
+		So(err, ShouldBeNil)
 
-		portResults := EvalAllPorts(&source, &dest)
+		portResults := Eval(source, dest)
 
 		So(portResults, ShouldResemble, []PortResult{{
-			ToPort: dest.Pod.Spec.Containers[0].Ports[0],
+			ToPort: dest.GetPorts()[0],
 			Egress: []NetpolResult{
 				{Netpol: *sourcePolicyTypeMismatch, EvalResult: NoMatch},
 				{Netpol: *egressLabelMismatch, EvalResult: NoMatch},
@@ -194,7 +206,8 @@ func TestEval(t *testing.T) {
 				*egressDeny,
 				*egressLabelsAllow3000,
 				*egressIpBlockAllow3000,
-			})
+			},
+			"")
 		So(err, ShouldBeNil)
 
 		// Dest and Ingress policies
@@ -232,20 +245,21 @@ func TestEval(t *testing.T) {
 				*ingressDeny,
 				*ingressLabelsAllow3000,
 				*ingressIpBlockAllow3000,
-			})
+			},
+			"")
 		So(err, ShouldBeNil)
 
-		portResults := EvalAllPorts(source, dest)
+		portResults := Eval(source, dest)
 
 		// Sanity check that we've set up the test correctly.
 		ipBlockMatch, err := source.MatchIPBlock(*egressIpBlockAllow3000.Spec.Egress[0].To[0].IPBlock)
 		So(err, ShouldBeNil)
 		So(ipBlockMatch, ShouldBeTrue)
-		So(PortContains(egressLabelsAllow3000.Spec.Egress[0].Ports[0], dest.Pod.Spec.Containers[0].Ports[0]), ShouldBeTrue)
-		So(PortContains(ingressLabelsAllow3000.Spec.Ingress[0].Ports[0], dest.Pod.Spec.Containers[0].Ports[0]), ShouldBeTrue)
+		So(PortContains(egressLabelsAllow3000.Spec.Egress[0].Ports[0], dest.GetPorts()[0]), ShouldBeTrue)
+		So(PortContains(ingressLabelsAllow3000.Spec.Ingress[0].Ports[0], dest.GetPorts()[0]), ShouldBeTrue)
 
 		So(portResults, ShouldResemble, []PortResult{{
-			ToPort: dest.Pod.Spec.Containers[0].Ports[0],
+			ToPort: dest.GetPorts()[0],
 			Egress: []NetpolResult{
 				{Netpol: *egressDeny, EvalResult: Deny},
 				{Netpol: *egressLabelsAllow3000, EvalResult: Allow},
@@ -291,14 +305,15 @@ func TestEval(t *testing.T) {
 				}},
 			}}).
 			Build()
-		source := PodConnection{
-			Pod:       makePod("PodOne", "NamespaceOne", 0),
-			Namespace: makeNamespace("NamespaceOne"),
-			Policies: []nwv1.NetworkPolicy{
+		source, err := NewPodConnection(
+			makePod("PodOne", "NamespaceOne", 0),
+			makeNamespace("NamespaceOne"),
+			[]nwv1.NetworkPolicy{
 				*egressLabelsAllowOther,
 				*egressIpBlockAllowOther,
 			},
-		}
+			"")
+		So(err, ShouldBeNil)
 
 		ingressLabelsAllowOther := NewPolicyBuilder("IngressLabelsAllowOther").
 			SetNamespace("NamespaceOne").
@@ -322,19 +337,20 @@ func TestEval(t *testing.T) {
 				}},
 			}}).
 			Build()
-		dest := PodConnection{
-			Pod:       destPod,
-			Namespace: makeNamespace("NamespaceTwo"),
-			Policies: []nwv1.NetworkPolicy{
+		dest, err := NewPodConnection(
+			destPod,
+			makeNamespace("NamespaceTwo"),
+			[]nwv1.NetworkPolicy{
 				*ingressLabelsAllowOther,
 				*ingressIpBlockAllowOther,
 			},
-		}
+			"")
+		So(err, ShouldBeNil)
 
-		portResults := EvalAllPorts(&source, &dest)
+		portResults := Eval(source, dest)
 
 		So(portResults, ShouldResemble, []PortResult{{
-			ToPort: dest.Pod.Spec.Containers[0].Ports[0],
+			ToPort: dest.GetPorts()[0],
 			Egress: []NetpolResult{
 				{Netpol: *egressLabelsAllowOther, EvalResult: Deny},
 				{Netpol: *egressIpBlockAllowOther, EvalResult: Deny},
@@ -360,23 +376,25 @@ func TestEval(t *testing.T) {
 			}}).
 			Build()
 
-		source := PodConnection{
-			Pod:       makePod("PodOne", "NamespaceOne", 0),
-			Namespace: makeNamespace("NamespaceOne"),
-			Policies: []nwv1.NetworkPolicy{
+		source, err := NewPodConnection(
+			makePod("PodOne", "NamespaceOne", 0),
+			makeNamespace("NamespaceOne"),
+			[]nwv1.NetworkPolicy{
 				*allowAllEgress,
 			},
-		}
-		dest := PodConnection{
-			Pod:       makePod("PodTwo", "NamespaceTwo", 0),
-			Namespace: makeNamespace("NamespaceTwo"),
-			Policies:  []nwv1.NetworkPolicy{},
-		}
+			"")
+		So(err, ShouldBeNil)
+		dest, err := NewPodConnection(
+			makePod("PodTwo", "NamespaceTwo", 0),
+			makeNamespace("NamespaceTwo"),
+			[]nwv1.NetworkPolicy{},
+			"")
+		So(err, ShouldBeNil)
 
-		portResults := EvalAllPorts(&source, &dest)
+		portResults := Eval(source, dest)
 
 		So(portResults, ShouldResemble, []PortResult{{
-			ToPort: dest.Pod.Spec.Containers[0].Ports[0],
+			ToPort: dest.GetPorts()[0],
 			Egress: []NetpolResult{
 				{Netpol: *allowAllEgress, EvalResult: Allow},
 			},

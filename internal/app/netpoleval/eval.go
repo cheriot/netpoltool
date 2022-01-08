@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	corev1 "k8s.io/api/core/v1"
 	nwv1 "k8s.io/api/networking/v1"
 
 	"github.com/cheriot/netpoltool/internal/util"
 )
 
 type PortResult struct {
-	ToPort         corev1.ContainerPort
+	ToPort         DestinationPort
 	Egress         []NetpolResult
 	Ingress        []NetpolResult
 	IngressAllowed bool
@@ -36,12 +35,8 @@ func EvalResultString(er EvalResult) string {
 	return []string{"NoMatch", "Deny", "Allow"}[er]
 }
 
-func EvalAllPorts(source *PodConnection, dest *PodConnection) []PortResult {
-	return Eval(source, dest, dest.GetContainerPorts())
-}
-
-func Eval(source *PodConnection, dest ConnectionSide, toPorts []corev1.ContainerPort) []PortResult {
-	util.Log.Debugf("Eval toPorts %+v", toPorts)
+func Eval(source *PodConnection, dest ConnectionSide) []PortResult {
+	util.Log.Debugf("Eval toPorts %+v", dest.GetPorts())
 
 	nodeName := source.Pod.Spec.NodeName
 	if nodeName != "" && dest.IsOnNode(nodeName) {
@@ -52,22 +47,26 @@ func Eval(source *PodConnection, dest ConnectionSide, toPorts []corev1.Container
 	}
 
 	var portResults []PortResult
-	for _, toPort := range toPorts {
+	for _, toPort := range dest.GetPorts() {
 		var egressResults []NetpolResult
 		var ingressResults []NetpolResult
 
-		for _, np := range source.Policies {
-			egressResults = append(egressResults, NetpolResult{
-				EvalResult: evalEgress(source, np, dest, toPort),
-				Netpol:     np,
-			})
+		if source.IsInCluster() {
+			for _, np := range source.GetPolicies() {
+				egressResults = append(egressResults, NetpolResult{
+					EvalResult: evalEgress(source, np, dest, toPort),
+					Netpol:     np,
+				})
+			}
 		}
 
-		for _, np := range dest.GetPolicies() {
-			ingressResults = append(ingressResults, NetpolResult{
-				EvalResult: evalIngress(dest, np, source, toPort),
-				Netpol:     np,
-			})
+		if dest.IsInCluster() {
+			for _, np := range dest.GetPolicies() {
+				ingressResults = append(ingressResults, NetpolResult{
+					EvalResult: evalIngress(dest, np, source, toPort),
+					Netpol:     np,
+				})
+			}
 		}
 
 		egressAllowed := combineNetpolResults(egressResults)
@@ -107,9 +106,9 @@ func evalIngress(
 	dest ConnectionSide,
 	netpol nwv1.NetworkPolicy,
 	source ConnectionSide,
-	toPort corev1.ContainerPort) EvalResult {
+	toPort DestinationPort) EvalResult {
 
-	util.Log.Debugf("Eval ingress policy %s %s from pod %s on port %s %d", netpol.Namespace, netpol.Name, source.GetName(), toPort.Name, toPort.ContainerPort)
+	util.Log.Debugf("Eval ingress policy %s %s from pod %s on port %s %d", netpol.Namespace, netpol.Name, source.GetName(), toPort.Name, toPort.Num)
 
 	if !util.Contains(netpol.Spec.PolicyTypes, nwv1.PolicyTypeIngress) {
 		// netpol does not describe ingress
@@ -134,7 +133,7 @@ func evalIngress(
 	return Deny
 }
 
-func evalEgress(source ConnectionSide, netpol nwv1.NetworkPolicy, dest ConnectionSide, toPort corev1.ContainerPort) EvalResult {
+func evalEgress(source ConnectionSide, netpol nwv1.NetworkPolicy, dest ConnectionSide, toPort DestinationPort) EvalResult {
 	util.Log.Debugf("Eval egress for policy %s %s to pod %s", netpol.Namespace, netpol.Name, dest.GetName())
 
 	if !util.Contains(netpol.Spec.PolicyTypes, nwv1.PolicyTypeEgress) {
@@ -165,7 +164,7 @@ func evalRule(
 	peers []nwv1.NetworkPolicyPeer,
 	ports []nwv1.NetworkPolicyPort,
 	other ConnectionSide,
-	toPort corev1.ContainerPort,
+	toPort DestinationPort,
 ) bool {
 
 	// If any peers match otherPod, compare ports. If both match return true.
@@ -195,7 +194,7 @@ func evalRule(
 			var podMatch bool
 			if peer.PodSelector == nil {
 				// "if present but empty, it selects all pods"
-				podMatch = other.IsPod()
+				podMatch = other.IsInCluster() // match all pods, but not external hosts
 			} else {
 				podMatch = other.MatchPodSelector(*peer.PodSelector)
 			}
