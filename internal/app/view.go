@@ -54,10 +54,10 @@ func GetVerbosity(flags int) Verbosity {
 	return DetailNotMatching
 }
 
-func RenderCheckAccess(v ConsoleView, portResults []eval.PortResult, source, dest *eval.ConnectionSide) error {
+func RenderCheckAccess(v ConsoleView, portResults []eval.PortResult, source, dest eval.ConnectionSide) error {
 	color.New(color.FgRed).SprintfFunc()
 	if len(portResults) == 0 {
-		fmt.Printf("No ports found on %s %s.\n", dest.Namespace.Name, dest.Pod.Name)
+		fmt.Printf("No ports found on %s.\n", dest.GetName())
 	}
 
 	// api 3000 Allow
@@ -75,14 +75,18 @@ func RenderCheckAccess(v ConsoleView, portResults []eval.PortResult, source, des
 			"%s %s %d %s\n",
 			renderAllowSymbol(portResult.Allowed),
 			portResult.ToPort.Name,
-			portResult.ToPort.ContainerPort,
+			portResult.ToPort.Num,
 			renderAllow(portResult.Allowed))
 
 		if v.Verbosity > Default {
-			fmt.Fprintf(v.Writer, "      %s Egress from pod %s/%s\n", renderAllowSymbol(portResult.EgressAllowed), source.Namespace.Name, dest.Pod.Name)
-			renderNetpolResults(v, "            ", portResult.Egress)
-			fmt.Fprintf(v.Writer, "      %s Ingress to pod %s/%s\n", renderAllowSymbol(portResult.IngressAllowed), dest.Namespace.Name, dest.Pod.Name)
-			renderNetpolResults(v, "            ", portResult.Ingress)
+			if source.IsInCluster() {
+				fmt.Fprintf(v.Writer, "      %s Egress from pod %s\n", renderAllowSymbol(portResult.EgressAllowed), source.GetName())
+				renderNetpolResults(v, "            ", portResult.Egress)
+			}
+			if dest.IsInCluster() {
+				fmt.Fprintf(v.Writer, "      %s Ingress to pod %s\n", renderAllowSymbol(portResult.IngressAllowed), dest.GetName())
+				renderNetpolResults(v, "            ", portResult.Ingress)
+			}
 		}
 	}
 

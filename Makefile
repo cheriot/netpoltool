@@ -1,3 +1,6 @@
+test:
+	go test -v ./...
+
 fmt:
 	go mod tidy
 	gofmt -w .

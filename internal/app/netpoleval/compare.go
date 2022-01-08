@@ -4,15 +4,13 @@ import (
 	"fmt"
 	"net"
 
-	//"github.com/cheriot/netpoltool/internal/util"
-	corev1 "k8s.io/api/core/v1"
 	nwv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/strings/slices"
 )
 
-func PortContains(rulePort nwv1.NetworkPolicyPort, toPort corev1.ContainerPort) bool {
+func PortContains(rulePort nwv1.NetworkPolicyPort, toPort DestinationPort) bool {
 	if *rulePort.Protocol != toPort.Protocol {
 		// if nil, default to TCP
 		return false
@@ -30,11 +28,11 @@ func PortContains(rulePort nwv1.NetworkPolicyPort, toPort corev1.ContainerPort) 
 
 	if rulePort.EndPort != nil {
 		// Check range [Port, EndPort]
-		return rulePort.Port.IntVal <= toPort.ContainerPort &&
-			toPort.ContainerPort <= *rulePort.EndPort
+		return rulePort.Port.IntVal <= toPort.Num &&
+			toPort.Num <= *rulePort.EndPort
 	}
 
-	return rulePort.Port.IntVal == toPort.ContainerPort
+	return rulePort.Port.IntVal == toPort.Num
 }
 
 func MatchLabelSelector(podSelector metav1.LabelSelector, podLabels map[string]string) bool {
@@ -75,20 +73,12 @@ func MatchLabelSelector(podSelector metav1.LabelSelector, podLabels map[string]s
 	return true
 }
 
-func MatchIPBlock(ipBlock nwv1.IPBlock, pod *corev1.Pod) (bool, error) {
-
-	ipStr := pod.Status.PodIP // Do we need to check the ipv6 addr in Status.PodIPs?
-	if ipStr == "" {
-		// A new pod may not have been assigned an IP yet. An expected case, but inform the user that it's different
-		// than a NetworkPolicy evaluating to false.
-		return false, fmt.Errorf("pod %s does not have an PodIP so ipBlock netpols cannot be evaluated.", pod.Name)
-	}
+func MatchIPBlock(ipBlock nwv1.IPBlock, ip net.IP, ipStr string) (bool, error) {
 	for _, exceptIpStr := range ipBlock.Except {
 		if ipStr == exceptIpStr {
 			return false, nil
 		}
 	}
-	ip := net.ParseIP(pod.Status.PodIP)
 
 	_, ipNet, err := net.ParseCIDR(ipBlock.CIDR)
 	if err != nil {

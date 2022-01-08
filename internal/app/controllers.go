@@ -26,53 +26,55 @@ func NewApp(kubeconfig string) (*App, error) {
 	}, nil
 }
 
-func (a *App) queryConnectionSide(namespaceName, podName string) (*eval.ConnectionSide, error) {
-	pod, err := a.k8sSession.QueryPod(context.TODO(), namespaceName, podName)
+func (a *App) queryConnectionSide(ctx context.Context, namespaceName, podName string, portNameOrNum string) (*eval.PodConnection, error) {
+	pod, err := a.k8sSession.QueryPod(ctx, namespaceName, podName)
 	if err != nil {
 		return nil, fmt.Errorf("error querying pod %s %s: %w", namespaceName, podName, err)
 	}
 
-	namespace, err := a.k8sSession.QueryNamespace(context.TODO(), namespaceName)
+	namespace, err := a.k8sSession.QueryNamespace(ctx, namespaceName)
 	if err != nil {
 		return nil, fmt.Errorf("error querying for namespace %s: %w", namespaceName, err)
 	}
 
-	netpolList, err := a.k8sSession.QueryNetPolList(context.TODO(), namespaceName)
+	netpolList, err := a.k8sSession.QueryNetPolList(ctx, namespaceName)
 	if err != nil {
 		return nil, fmt.Errorf("error querying for netpol list %s: %w", namespace, err)
 	}
 
-	return &eval.ConnectionSide{
-		Pod:       pod,
-		Namespace: namespace,
-		Policies:  netpolList.Items,
-	}, nil
+	return eval.NewPodConnection(pod, namespace, netpolList.Items, portNameOrNum)
 }
 
-func (a *App) CheckAccess(v ConsoleView, namespaceStr string, podName string, toNamespaceStr string, toPodName string, toPortStr string) error {
-	// TODO parallelize data access
+func (a *App) CheckAccess(v ConsoleView,
+	namespaceName string,
+	podName string,
+	toNamespaceName string,
+	toPodName string,
+	toPortStr string,
+	toExternalIP string,
+	toProtocolName string) error {
 
-	source, err := a.queryConnectionSide(namespaceStr, podName)
-	if err != nil {
-		return fmt.Errorf("error querying source: %w", err)
+	// UI layer should do user friendly validation. This can just error.
+	var err error
+	var dest eval.ConnectionSide
+	if toPodName != "" {
+		dest, err = a.queryConnectionSide(context.TODO(), toNamespaceName, toPodName, toPortStr)
+	} else if toExternalIP != "" {
+		dest, err = eval.NewExternalConnection(toExternalIP, toPortStr, toProtocolName)
+	} else {
+		return fmt.Errorf("no destination specified")
 	}
-
-	dest, err := a.queryConnectionSide(toNamespaceStr, toPodName)
 	if err != nil {
 		return fmt.Errorf("error querying destination: %w", err)
 	}
 
-	var results []eval.PortResult
-	if toPortStr != "" {
-		port, err := dest.GetPort(toPortStr)
-		if err != nil {
-			return fmt.Errorf("port name or number is not valid: %w", err)
-		}
-		results = eval.Eval(source, dest, []corev1.ContainerPort{*port})
-	} else {
-		results = eval.Eval(source, dest, dest.GetContainerPorts())
+	// TODO parallelize data access
+	source, err := a.queryConnectionSide(context.TODO(), namespaceName, podName, "")
+	if err != nil {
+		return fmt.Errorf("error querying source: %w", err)
 	}
 
+	results := eval.Eval(source, dest)
 	return RenderCheckAccess(v, results, source, dest)
 
 }

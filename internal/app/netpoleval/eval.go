@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	corev1 "k8s.io/api/core/v1"
 	nwv1 "k8s.io/api/networking/v1"
 
 	"github.com/cheriot/netpoltool/internal/util"
 )
 
 type PortResult struct {
-	ToPort         corev1.ContainerPort
+	ToPort         DestinationPort
 	Egress         []NetpolResult
 	Ingress        []NetpolResult
 	IngressAllowed bool
@@ -36,14 +35,11 @@ func EvalResultString(er EvalResult) string {
 	return []string{"NoMatch", "Deny", "Allow"}[er]
 }
 
-func EvalAllPorts(source, dest *ConnectionSide) []PortResult {
-	return Eval(source, dest, dest.GetContainerPorts())
-}
+func Eval(source *PodConnection, dest ConnectionSide) []PortResult {
+	util.Log.Debugf("Eval toPorts %+v", dest.GetPorts())
 
-func Eval(source, dest *ConnectionSide, toPorts []corev1.ContainerPort) []PortResult {
-	util.Log.Debugf("Eval toPorts %+v", toPorts)
-
-	if source.Pod.Spec.NodeName != "" && source.Pod.Spec.NodeName == dest.Pod.Spec.NodeName {
+	nodeName := source.Pod.Spec.NodeName
+	if nodeName != "" && dest.IsOnNode(nodeName) {
 		// "traffic to and from the node where a Pod is running is always allowed, regardless of the IP address of the Pod or the node"
 		// https://kubernetes.io/docs/concepts/services-networking/network-policies/
 		// That's probably not what the user is interested in so continue evaluation.
@@ -51,21 +47,26 @@ func Eval(source, dest *ConnectionSide, toPorts []corev1.ContainerPort) []PortRe
 	}
 
 	var portResults []PortResult
-	for _, toPort := range toPorts {
+	for _, toPort := range dest.GetPorts() {
 		var egressResults []NetpolResult
 		var ingressResults []NetpolResult
-		for _, np := range source.Policies {
-			egressResults = append(egressResults, NetpolResult{
-				EvalResult: evalEgress(*source.Pod, np, dest.Namespace, dest.Pod, toPort),
-				Netpol:     np,
-			})
+
+		if source.IsInCluster() {
+			for _, np := range source.GetPolicies() {
+				egressResults = append(egressResults, NetpolResult{
+					EvalResult: evalEgress(source, np, dest, toPort),
+					Netpol:     np,
+				})
+			}
 		}
 
-		for _, np := range dest.Policies {
-			ingressResults = append(ingressResults, NetpolResult{
-				EvalResult: evalIngress(dest.Pod, np, source.Namespace, source.Pod, toPort),
-				Netpol:     np,
-			})
+		if dest.IsInCluster() {
+			for _, np := range dest.GetPolicies() {
+				ingressResults = append(ingressResults, NetpolResult{
+					EvalResult: evalIngress(dest, np, source, toPort),
+					Netpol:     np,
+				})
+			}
 		}
 
 		egressAllowed := combineNetpolResults(egressResults)
@@ -99,14 +100,15 @@ func combineNetpolResults(nrs []NetpolResult) bool {
 	return max == Allow
 }
 
-func evalIngress(
-	toPod *corev1.Pod,
-	netpol nwv1.NetworkPolicy,
-	sourceNamespace *corev1.Namespace,
-	sourcePod *corev1.Pod,
-	toPort corev1.ContainerPort) EvalResult {
+//func evalPolicy(source)
 
-	util.Log.Debugf("Eval ingress policy %s %s from pod %s %s on port %s %d", toPod.Namespace, netpol.Name, sourcePod.Namespace, sourcePod.Name, toPort.Name, toPort.ContainerPort)
+func evalIngress(
+	dest ConnectionSide,
+	netpol nwv1.NetworkPolicy,
+	source ConnectionSide,
+	toPort DestinationPort) EvalResult {
+
+	util.Log.Debugf("Eval ingress policy %s %s from pod %s on port %s %d", netpol.Namespace, netpol.Name, source.GetName(), toPort.Name, toPort.Num)
 
 	if !util.Contains(netpol.Spec.PolicyTypes, nwv1.PolicyTypeIngress) {
 		// netpol does not describe ingress
@@ -114,15 +116,15 @@ func evalIngress(
 		return NoMatch
 	}
 
-	if !MatchLabelSelector(netpol.Spec.PodSelector, toPod.Labels) {
+	if !dest.MatchPodSelector(netpol.Spec.PodSelector) {
 		// netpol does not match source pod
-		util.Log.Tracef("Policy does not match pod %+v %+v", netpol.Spec.PodSelector, toPod.Labels)
+		util.Log.Tracef("Policy does not match pod %+v %s", netpol.Spec.PodSelector, dest.GetName())
 		return NoMatch
 	}
 
-	// does an egress rule match the toPod and toPort?
+	// does an ingress rule match the toPod and toPort?
 	for _, eRule := range netpol.Spec.Ingress {
-		if evalRule(netpol.Namespace, eRule.From, eRule.Ports, sourceNamespace, sourcePod, toPort) {
+		if evalRule(netpol.Namespace, eRule.From, eRule.Ports, source, toPort) {
 			return Allow
 		}
 	}
@@ -131,8 +133,8 @@ func evalIngress(
 	return Deny
 }
 
-func evalEgress(sourcePod corev1.Pod, netpol nwv1.NetworkPolicy, toNamespace *corev1.Namespace, toPod *corev1.Pod, toPort corev1.ContainerPort) EvalResult {
-	util.Log.Debugf("Eval egress for policy %s %s to pod %s %s", netpol.Namespace, netpol.Name, toPod.Namespace, toPod.Name)
+func evalEgress(source ConnectionSide, netpol nwv1.NetworkPolicy, dest ConnectionSide, toPort DestinationPort) EvalResult {
+	util.Log.Debugf("Eval egress for policy %s %s to pod %s", netpol.Namespace, netpol.Name, dest.GetName())
 
 	if !util.Contains(netpol.Spec.PolicyTypes, nwv1.PolicyTypeEgress) {
 		util.Log.Tracef("Policy does not describe egress %s %s", netpol.Namespace, netpol.Name)
@@ -140,15 +142,15 @@ func evalEgress(sourcePod corev1.Pod, netpol nwv1.NetworkPolicy, toNamespace *co
 		return NoMatch
 	}
 
-	if !MatchLabelSelector(netpol.Spec.PodSelector, sourcePod.Labels) {
+	if !source.MatchPodSelector(netpol.Spec.PodSelector) {
 		// netpol does not match source pod
-		util.Log.Tracef("Policy does not match pod %+v %+v", netpol.Spec.PodSelector, sourcePod.Labels)
+		util.Log.Tracef("Policy does not match pod %+v %s", netpol.Spec.PodSelector, source.GetName())
 		return NoMatch
 	}
 
 	// does an egress rule match the toPod and toPort?
 	for _, eRule := range netpol.Spec.Egress {
-		if evalRule(netpol.Namespace, eRule.To, eRule.Ports, toNamespace, toPod, toPort) {
+		if evalRule(netpol.Namespace, eRule.To, eRule.Ports, dest, toPort) {
 			return Allow
 		}
 	}
@@ -161,9 +163,8 @@ func evalRule(
 	policyNamespace string,
 	peers []nwv1.NetworkPolicyPeer,
 	ports []nwv1.NetworkPolicyPort,
-	otherNamespace *corev1.Namespace,
-	otherPod *corev1.Pod,
-	toPort corev1.ContainerPort,
+	other ConnectionSide,
+	toPort DestinationPort,
 ) bool {
 
 	// If any peers match otherPod, compare ports. If both match return true.
@@ -171,12 +172,12 @@ func evalRule(
 		var peerMatch bool
 		if peer.IPBlock != nil {
 			// "If this field [peer.IPBlock] is set then neither of the other fields can be."
-			ipBlockMatch, err := MatchIPBlock(*peer.IPBlock, otherPod)
+			ipBlockMatch, err := other.MatchIPBlock(*peer.IPBlock)
 			if err != nil {
 				// Bail because by the time a user knows the podName this shouldn't be possible.
-				util.Log.Panicf("error evaluating policy in namespace %s against pod %s %s", policyNamespace, otherPod.Namespace, otherPod.Name)
+				util.Log.Panicf("error evaluating policy in namespace %s against pod %s", policyNamespace, other.GetName())
 			}
-			util.Log.Tracef("IPBlock compared %t %v %+v", ipBlockMatch, *peer.IPBlock, otherPod.Status.PodIPs)
+			util.Log.Tracef("IPBlock compared %t %v %sv", ipBlockMatch, *peer.IPBlock, other.GetName())
 
 			peerMatch = ipBlockMatch
 		} else {
@@ -185,20 +186,20 @@ func evalRule(
 			var namespaceMatch bool
 			if peer.NamespaceSelector == nil {
 				// "Otherwise it selects the Pods matching PodSelector in the policy's own Namespace"
-				namespaceMatch = otherNamespace.Name == policyNamespace
+				namespaceMatch = other.IsInNamespace(policyNamespace)
 			} else {
-				namespaceMatch = MatchLabelSelector(*peer.NamespaceSelector, otherNamespace.GetLabels())
+				namespaceMatch = other.MatchNamespaceSelector(*peer.NamespaceSelector)
 			}
 
 			var podMatch bool
 			if peer.PodSelector == nil {
 				// "if present but empty, it selects all pods"
-				podMatch = true
+				podMatch = other.IsInCluster() // match all pods, but not external hosts
 			} else {
-				podMatch = MatchLabelSelector(*peer.PodSelector, otherPod.GetLabels())
+				podMatch = other.MatchPodSelector(*peer.PodSelector)
 			}
 
-			util.Log.Tracef("Comparing peer selectors %v %v to pod labels %v", peer.NamespaceSelector, peer.PodSelector, otherPod.GetLabels())
+			util.Log.Tracef("Comparing peer selectors %v %v to pod labels %s", peer.NamespaceSelector, peer.PodSelector, other.GetName())
 			util.Log.Debugf("Namespace and pod selectors compared: %t %t", namespaceMatch, podMatch)
 
 			peerMatch = namespaceMatch && podMatch
@@ -221,6 +222,6 @@ func evalRule(
 		}
 	}
 
-	util.Log.Tracef("evalRule did not match peers %+v on %s %s", peers, otherNamespace.Name, otherPod.Name)
+	util.Log.Tracef("evalRule did not match peers %+v on %s", peers, other.GetName())
 	return false
 }
