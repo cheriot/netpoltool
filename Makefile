@@ -6,8 +6,16 @@ fmt:
 	gofmt -w .
 	goimports --local github.com/cheriot/netpoltool/ -w .
 
+gen:
+	rm -rf ./testdata/generated-yamls/*
+	go run cmd/testresources/main.go ./testdata/generated-yamls
+	kubectl apply -Rf ./testdata/generated-yamls/
+
 run:
 	go run cmd/netpoltool/main.go --log-level=trace eval --namespace=ns-npt-0 --pod=serve-pod-info --to-namespace=ns-npt-1 --to-pod=serve-pod-info -vv
+
+run-ip:
+	go run cmd/netpoltool/main.go --log-level=trace eval --namespace=ns-npt-0 --pod=serve-pod-info --to-ext-ip=127.0.0.1 --to-port=3000 -vv
 
 build:
 	go build -o netpoltool cmd/netpoltool/main.go

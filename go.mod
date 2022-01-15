@@ -9,6 +9,7 @@ require (
 	github.com/smartystreets/goconvey v1.7.2
 	k8s.io/api v0.23.1
 	k8s.io/apimachinery v0.23.1
+	k8s.io/cli-runtime v0.23.1
 	k8s.io/client-go v0.23.1
 	k8s.io/utils v0.0.0-20210930125809-cb0fa318a74b
 )
@@ -33,6 +34,7 @@ require (
 	github.com/imdario/mergo v0.3.5 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
+	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/mattn/go-colorable v0.1.9 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
