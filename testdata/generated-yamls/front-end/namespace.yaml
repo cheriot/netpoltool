@@ -3,7 +3,7 @@ kind: Namespace
 metadata:
   creationTimestamp: null
   labels:
-    name: back-end-dev
-  name: back-end-dev
+    name: front-end
+  name: front-end
 spec: {}
 status: {}

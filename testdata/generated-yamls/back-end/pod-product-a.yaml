@@ -5,7 +5,7 @@ metadata:
   labels:
     name: product-a
   name: product-a
-  namespace: back-end-dev
+  namespace: back-end
 spec:
   containers:
   - env:

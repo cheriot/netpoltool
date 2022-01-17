@@ -6,6 +6,8 @@ app = Flask(__name__)
 
 
 @app.route('/')
-def hello():
-    env_vars = dict(filter(lambda elem: elem[0].startswith('POD_'), os.environ.items()))
-    return json.dumps(env_vars)
+def pod_info():
+    prefix = 'PUBLIC_'
+    public_vars = dict(filter(lambda elem: elem[0].startswith(prefix), os.environ.items()))
+    output_vars = { k.replace(prefix, '').lower(): v for k, v in public_vars.items() }
+    return json.dumps(output_vars)

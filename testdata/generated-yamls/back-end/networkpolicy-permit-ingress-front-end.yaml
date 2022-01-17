@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  creationTimestamp: null
+  name: permit-ingress-front-end
+  namespace: back-end
+spec:
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: front-end
+      podSelector:
+        matchLabels:
+          name: graphql-a
+    ports:
+    - port: 3000
+      protocol: TCP
+  podSelector:
+    matchLabels:
+      name: product-a
+  policyTypes:
+  - Ingress
