@@ -19,6 +19,9 @@ run-ip:
 build:
 	go build -o netpoltool cmd/netpoltool/main.go
 
+clitools-run:
+	docker run --rm -p "3000:3000" -e "PUBLIC_POD_NAME=foo-pod-asdf" --name mockpod clitools:latest
+
 clitools-build:
 	docker build testdata/images/clitools --tag clitools:latest
 
