@@ -68,7 +68,7 @@ func main() {
 
 func errorExit(msg string, err error) {
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Fatal error generating test resources when %s: %w", msg, err)
+		fmt.Fprintf(os.Stderr, "Fatal error generating test resources when %s: %s", msg, err.Error())
 		os.Exit(1)
 	}
 }

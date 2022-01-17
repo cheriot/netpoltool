@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  creationTimestamp: null
+  name: permit-egress-back-end
+  namespace: front-end
+spec:
+  egress:
+  - ports:
+    - port: 3000
+      protocol: TCP
+    to:
+    - namespaceSelector:
+        matchLabels:
+          name: back-end
+      podSelector:
+        matchLabels:
+          name: product-a
+  podSelector:
+    matchLabels:
+      name: graphql-a
+  policyTypes:
+  - Egress

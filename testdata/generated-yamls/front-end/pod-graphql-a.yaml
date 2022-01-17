@@ -3,9 +3,9 @@ kind: Pod
 metadata:
   creationTimestamp: null
   labels:
-    name: product-a
-  name: product-a
-  namespace: back-end-dev
+    name: graphql-a
+  name: graphql-a
+  namespace: front-end
 spec:
   containers:
   - env:
@@ -21,7 +21,7 @@ spec:
     name: test-container
     ports:
     - containerPort: 3000
-      name: api
+      name: http
       protocol: TCP
     resources: {}
   restartPolicy: Never
